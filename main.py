@@ -2,6 +2,9 @@ from tkinter import *
 from tkinter import messagebox
 import password_generator
 import pyperclip
+import json
+
+
 # ---------------------------- PASSWORD GENERATOR ------------------------------- #
 
 
@@ -16,21 +19,56 @@ def generate_password():
 
 
 def save_password():
-    website_i = website_input.get()
+    website_i = website_input.get().lower()
     username_i = username_input.get()
     password_i = password_input.get()
+    new_data = {
+        website_i: {
+            "email/username": username_i,
+            "password": password_i,
+        }
+    }
     if 0 in (len(website_i), len(username_i), len(password_i)):
         messagebox.showerror(title="Oops", message="Please don't leave any fields empty!")
     else:
         is_ok = messagebox.askokcancel(title=website_i, message=f"These are the detail entered: \n"
-                                                        f"Email/Username: {username_i}\n"
-                                                        f"password: {password_i}\n"
-                                                        f"Do you want to save?")
+                                                                f"email/username: {username_i}\n"
+                                                                f"password: {password_i}\n"
+                                                                f"Do you want to save?")
         if is_ok:
-            with open("passwords.txt", "a") as password_storage:
-                password_storage.write(f"{website_i} | {username_i} | {password_i}\n")
+            try:
+                with open("passwords.json", "r") as password_storage:
+                    data = json.load(password_storage)
+                    data.update(new_data)
+                with open("passwords.json", "w") as password_storage:
+                    json.dump(data, password_storage, indent=4)
+            except FileNotFoundError:
+                with open("passwords.json", "w") as password_storage:
+                    json.dump(new_data, password_storage, indent=4)
+            finally:
                 website_input.delete(0, 'end')
                 password_input.delete(0, 'end')
+
+
+# Search for existing data
+
+def search():
+    website_search = website_input.get()
+    try:
+        with open("passwords.json") as password_storage:
+            data = json.load(password_storage)
+            name = data.get(website_search.lower())
+        username_input.delete(0, END)
+        print(name.get("email/username"))
+        username_input.insert(0, name.get('email/username'))
+        password_input.delete(0, END)
+        password_input.insert(0, name.get('password'))
+    except AttributeError:
+        messagebox.showerror(title="Oops", message="Website name has no data saved!")
+    except FileNotFoundError:
+        messagebox.showerror(title="Oops", message="Currently no data has been loaded yet!")
+    else:
+        messagebox.showinfo(title="Load Successful", message="Website account information has been loaded!")
 
     # ---------------------------- UI SETUP ------------------------------- #
 
@@ -45,8 +83,10 @@ canvas.grid(column=1, row=0)
 website = Label(text="Website:")
 website.grid(column=0, row=1)
 website_input = Entry()
-website_input.grid(column=1, row=1, columnspan=2, sticky="EW")
+website_input.grid(column=1, row=1, sticky="EW")
 website_input.focus()
+search = Button(text="Search", command=search)
+search.grid(column=2, row=1, sticky="EW")
 
 username = Label(text="Email/Username:")
 username.grid(column=0, row=2)
